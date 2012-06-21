@@ -1,0 +1,30 @@
+# Output svn log entries on single pipe separated line
+# Requires xsltproc and svn
+
+if ! command -v xsltproc > /dev/null; then echo 'Cannot find xsltproc'; exit 1; fi
+if ! command -v svn > /dev/null; then echo 'Cannot find svn'; exit 1; fi
+
+svn info > out
+if [ $? -eq 0 ]
+  then
+    stylesheet='
+    <?xml version="1.0" encoding="ISO-8859-1"?>  
+    <xsl:stylesheet version="1.0"  
+    xmlns:xsl="http://www.w3.org/1999/XSL/Transform">  
+    <xsl:output method="text"/>
+    <xsl:template match="/">  
+    <xsl:for-each select="log/logentry">  
+    <xsl:value-of select="date"/>|<xsl:value-of select="author"/>|<xsl:value-of select="msg"/><xsl:text>&#10;</xsl:text>  
+    </xsl:for-each>  
+    </xsl:template>  
+    </xsl:stylesheet>'
+
+    stylesheet_file=`mktemp /tmp/stylesheet.XXXXX`
+
+    echo $stylesheet > $stylesheet_file
+    svn log --xml $@ | xsltproc $stylesheet_file -
+
+    rm $stylesheet_file
+  else
+    echo $out
+fi
